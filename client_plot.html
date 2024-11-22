@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Python Sandbox - Client-side Plotting</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .code-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .plot-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .execute-button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .execute-button:hover {
+            background: #45a049;
+        }
+        #code-editor {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        #status, #metrics {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .metrics-panel {
+            background: #e3f2fd;
+            color: #1565c0;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Python Sandbox - Client-side Plotting</h1>
+        <div class="metrics-panel">
+            <h3>Performance Metrics</h3>
+            <div id="metrics"></div>
+        </div>
+    </div>
+
+    <div class="code-container">
+        <textarea id="code-editor">import plotly.graph_objects as go
+
+fig = go.Figure(data=go.Scatter(x=[1, 2, 3], y=[1, 2, 3]))
+fig.update_layout(title='Test Plot')
+fig.show()</textarea>
+        <button class="execute-button" onclick="executePlot()">Execute Plot</button>
+        <div id="status"></div>
+    </div>
+
+    <div class="plot-container">
+        <div id="plot"></div>
+    </div>
+
+    <script>
+        let pyodide = null;
+        let initializationTime = null;
+
+        async function initPyodide() {
+            if (pyodide) return;
+            
+            const startInit = performance.now();
+            setStatus('Initializing Pyodide...', 'info');
+            
+            pyodide = await loadPyodide();
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            await micropip.install('plotly');
+            
+            initializationTime = performance.now() - startInit;
+            setStatus('Pyodide ready', 'success');
+            updateMetrics({
+                initialization: initializationTime
+            });
+        }
+
+        function setStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = type;
+        }
+
+        function updateMetrics(metrics) {
+            const metricsDiv = document.getElementById('metrics');
+            metricsDiv.innerHTML = `
+                <strong>Last Run:</strong>
+                <ul>
+                    ${metrics.initialization ? `<li>Initialization time: ${metrics.initialization.toFixed(1)}ms</li>` : ''}
+                    ${metrics.execution ? `<li>Code execution time: ${metrics.execution.toFixed(1)}ms</li>` : ''}
+                    ${metrics.total ? `<li>Total time: ${metrics.total.toFixed(1)}ms</li>` : ''}
+                </ul>
+            `;
+        }
+
+        async function executePlot() {
+            try {
+                const startTotal = performance.now();
+                await initPyodide();
+                
+                const code = document.getElementById('code-editor').value;
+                
+                // Modify plotly.show to render in our div
+                pyodide.runPython(`
+import plotly
+def custom_show(fig, *args, **kwargs):
+    return fig.to_json()
+plotly.io.show = custom_show
+`);
+                
+                const startExecution = performance.now();
+                setStatus('Executing plot...', 'info');
+                const plotJson = pyodide.runPython(code);
+                const executionTime = performance.now() - startExecution;
+                
+                await Plotly.newPlot('plot', JSON.parse(plotJson));
+                const totalTime = performance.now() - startTotal;
+                
+                setStatus('Plot rendered successfully', 'success');
+                updateMetrics({
+                    initialization: initializationTime,
+                    execution: executionTime,
+                    total: totalTime
+                });
+                
+            } catch (error) {
+                console.error('Error:', error);
+                setStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Initialize Pyodide when the page loads
+        initPyodide();
+    </script>
+</body>
+</html>

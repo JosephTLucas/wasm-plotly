@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  python-sandbox:
+    build: .
+    ports:
+      - "3000:3000"  # Main sandbox service
+      - "8000:8000"  # File server for viewing SVGs
+    volumes:
+      - ./output:/app/output

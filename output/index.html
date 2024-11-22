@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Python Sandbox - Server-side Plot Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .plot-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .refresh-button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .refresh-button:hover {
+            background: #45a049;
+        }
+        .svg-container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .metrics-panel {
+            background: #e3f2fd;
+            color: #1565c0;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Python Sandbox - Server-side Plot Viewer</h1>
+        <button class="refresh-button" onclick="refreshPlot()">Refresh Plot</button>
+        <div class="metrics-panel">
+            <h3>Performance Metrics</h3>
+            <div id="metrics"></div>
+        </div>
+    </div>
+    <div class="plot-container">
+        <h2>Test Plot</h2>
+        <div class="svg-container">
+            <object id="plot-object" type="image/svg+xml" data="test_plot.svg" style="width: 100%; height: auto;">
+                Your browser does not support SVG
+            </object>
+        </div>
+    </div>
+
+    <script>
+        let lastRefreshTime = null;
+
+        async function refreshPlot() {
+            const startTime = performance.now();
+            try {
+                const response = await fetch(window.location.href);
+                const currentTime = new Date().getTime();
+                const loadTime = performance.now() - startTime;
+                
+                // Force SVG reload
+                const obj = document.getElementById('plot-object');
+                obj.data = `test_plot.svg?t=${currentTime}`;
+                
+                updateMetrics({
+                    loadTime: loadTime,
+                    timeSinceLastRefresh: lastRefreshTime ? currentTime - lastRefreshTime : null
+                });
+                
+                lastRefreshTime = currentTime;
+            } catch (error) {
+                console.error('Error refreshing plot:', error);
+            }
+        }
+
+        function updateMetrics(metrics) {
+            const metricsDiv = document.getElementById('metrics');
+            metricsDiv.innerHTML = `
+                <ul>
+                    <li>Load time: ${metrics.loadTime.toFixed(1)}ms</li>
+                    ${metrics.timeSinceLastRefresh ? 
+                      `<li>Time since last refresh: ${(metrics.timeSinceLastRefresh/1000).toFixed(1)}s</li>` 
+                      : ''}
+                </ul>
+            `;
+        }
+
+        // Record initial load time
+        window.onload = () => {
+            const loadTime = performance.now();
+            updateMetrics({ loadTime: loadTime });
+            lastRefreshTime = new Date().getTime();
+        };
+    </script>
+</body>
+</html>

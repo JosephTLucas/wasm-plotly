@@ -37,6 +37,7 @@ import plotly.graph_objects as go
 
 fig = go.Figure(data=go.Scatter(x=[1, 2, 3], y=[1, 2, 3]))
 fig.update_layout(title='Test Plot')
+fig.show()
 ```
 
 Bar chart:
@@ -45,6 +46,7 @@ import plotly.graph_objects as go
 
 fig = go.Figure(data=go.Bar(x=["A", "B", "C"], y=[10, 20, 15]))
 fig.update_layout(title="Bar Chart Example")
+fig.show()
 ```
 
 ## Performance Comparison
